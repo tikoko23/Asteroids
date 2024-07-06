@@ -1,0 +1,1 @@
+gcc main.c -o exec -Wall -lraylib -lm
