@@ -19,6 +19,7 @@ bool ShouldExit = false;
 bool Paused = false;
 bool Debug = false;
 bool AtMenu = true;
+float GlobalSoundVolume = 1.0f;
 float last_shot_time;
 int Score = 0;
 Vector2 CameraOffset = (Vector2) { .x = 0, .y = 0 };
@@ -27,6 +28,15 @@ Sound sfx_hit;
 Sound sfx_collide;
 Sound sfx_explode;
 Sound sfx_shoot;
+
+void SetGlobalVolume(float volume)
+{
+    volume /= 5;
+    SetSoundVolume(sfx_hit, volume);
+    SetSoundVolume(sfx_collide, volume);
+    SetSoundVolume(sfx_explode, volume);
+    SetSoundVolume(sfx_shoot, volume);
+}
 
 void StartMenu()
 {
@@ -78,6 +88,33 @@ void EndMenu()
     player_health = player_max_health;
     player_position = (Vector2) { .x = WINDOW_WIDTH / 2, .y = WINDOW_HEIGHT / 2 };
     player_rotation = 0.0f;
+}
+
+void DrawSettings()
+{
+    float old_volume = GlobalSoundVolume;
+
+    unsigned int text_size = MeasureText("VOLUME", 14);
+    DrawText(
+        "VOLUME",
+        (WINDOW_WIDTH - text_size) / 2,
+        WINDOW_HEIGHT - (SOUND_VOLUME_SLIDER_BOTTOM_PADDING + SOUND_VOLUME_SLIDER_HEIGHT) - 16,
+        14,
+        GRAY
+    );
+    
+    GuiSlider(
+        (Rectangle) {
+            .x = (WINDOW_WIDTH - SOUND_VOLUME_SLIDER_WIDTH) / 2,
+            .y = WINDOW_HEIGHT - (SOUND_VOLUME_SLIDER_BOTTOM_PADDING + SOUND_VOLUME_SLIDER_HEIGHT),
+            .width = SOUND_VOLUME_SLIDER_WIDTH,
+            .height = SOUND_VOLUME_SLIDER_HEIGHT
+        },
+        "", "", &GlobalSoundVolume, 0.0, 2.0
+    );
+
+    if (GlobalSoundVolume != old_volume)
+        SetGlobalVolume(GlobalSoundVolume);
 }
 
 void input()
@@ -332,6 +369,8 @@ void draw()
         unsigned int length = MeasureText("ASTEROIDS", 54);
         DrawText("ASTEROIDS", (WINDOW_WIDTH - length) / 2, 80, 54, WHITE);
 
+        DrawSettings();
+
         if (GuiButton(
             (Rectangle) {
                 .x = (WINDOW_WIDTH - START_BUTTON_WIDTH) / 2,
@@ -414,6 +453,7 @@ void draw()
         unsigned int length = MeasureText(text, 54);
 
         DrawText(text, (WINDOW_WIDTH - length) / 2, 50, 54, WHITE);
+        DrawSettings();
     }
 
     EndDrawing();
