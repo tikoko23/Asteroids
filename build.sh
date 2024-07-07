@@ -1,1 +1,1 @@
-gcc main.c -o exec -Wall -lraylib -lm
+gcc src/main.c -o exec -Wall -lraylib -lm -DRAYGUI_IMPLEMENTATION -ggdb

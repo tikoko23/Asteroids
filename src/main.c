@@ -1,5 +1,6 @@
 #include <raylib.h>
 #include <raymath.h>
+#include "../lib/raygui.h"
 
 #include <stdio.h>
 #include <math.h>
@@ -17,6 +18,7 @@
 bool ShouldExit = false;
 bool Paused = false;
 bool Debug = false;
+bool AtMenu = true;
 float last_shot_time;
 int Score = 0;
 Vector2 CameraOffset = (Vector2) { .x = 0, .y = 0 };
@@ -26,53 +28,109 @@ Sound sfx_collide;
 Sound sfx_explode;
 Sound sfx_shoot;
 
+void StartMenu()
+{
+    for (int i = 0; i < MAX_ASTEROID_COUNT; ++i)
+    {
+        SpawnedAsteroids[i].active = false;
+    }
+
+    for (int i = 0; i < MAX_PROJECTILE_COUNT; ++i)
+    {
+        SpawnedProjectiles[i].active = false;
+    }
+
+    for (int i = 0; i < MAX_PARTICLE_COUNT; ++i)
+    {
+        SpawnedParticles[i].active = false;
+    }
+
+    player_position = (Vector2) { .x = 50, .y = WINDOW_HEIGHT / 2 };
+    player_rotation = 90.0f;
+    player_rotation_queue = 0;
+    player_forward_queue = 0;
+    player_sideways_queue = 0;
+
+    AtMenu = true;
+}
+
+void EndMenu()
+{
+    AtMenu = false;
+
+    for (int i = 0; i < MAX_ASTEROID_COUNT; ++i)
+    {
+        SpawnedAsteroids[i].active = false;
+    }
+
+    for (int i = 0; i < MAX_PROJECTILE_COUNT; ++i)
+    {
+        SpawnedProjectiles[i].active = false;
+    }
+
+    for (int i = 0; i < MAX_PARTICLE_COUNT; ++i)
+    {
+        SpawnedParticles[i].active = false;
+    }
+
+    Score = 0;
+
+    player_health = player_max_health;
+    player_position = (Vector2) { .x = WINDOW_WIDTH / 2, .y = WINDOW_HEIGHT / 2 };
+    player_rotation = 0.0f;
+}
+
 void input()
 {
-    if (IsKeyDown(KEY_W))
+    if (!AtMenu)
     {
-        player_forward_queue += 1;
-    }
-    if (IsKeyDown(KEY_A))
-    {
-        player_sideways_queue -= 1;
-    }
-    if (IsKeyDown(KEY_S))
-    {
-        player_forward_queue -= 1.0f * PLAYER_BACKWARDS_MULTIPLIER;
-    }
-    if (IsKeyDown(KEY_D))
-    {
-        player_sideways_queue += 1;
-    }
-    if (IsKeyDown(KEY_SPACE) && last_shot_time > 0.25f)
-    {
-        last_shot_time = 0.0f;
-        Projectile projectile = {
-            .position = Vector2Add(
-                player_position,
-                Vector2Scale(
-                    player_direction_vector,
-                    player_radius
-                )
-            ),
-            .move_direction = player_direction_vector,
-            .speed = PROJECTILE_MOVE_SPEED,
-            .color = RAYWHITE,
-            .active = true
-        };
-
-        bool added = AddProjectile(&projectile);
-
-        if (added)
+        if (IsKeyDown(KEY_W))
         {
-            SetSoundPitch(sfx_shoot, GetRandomValue(8, 12) / 10.0f);
-            PlaySound(sfx_shoot);
+            player_forward_queue += 1;
         }
-    }
+        if (IsKeyDown(KEY_A))
+        {
+            player_sideways_queue -= 1;
+        }
+        if (IsKeyDown(KEY_S))
+        {
+            player_forward_queue -= 1.0f * PLAYER_BACKWARDS_MULTIPLIER;
+        }
+        if (IsKeyDown(KEY_D))
+        {
+            player_sideways_queue += 1;
+        }
 
-    if (IsKeyPressed(KEY_ESCAPE))
-    {
-        Paused = !Paused;
+        if (IsKeyDown(KEY_SPACE) && last_shot_time > 0.25f)
+        {
+            last_shot_time = 0.0f;
+            Projectile projectile = {
+                .position = Vector2Add(
+                    player_position,
+                    Vector2Scale(
+                        player_direction_vector,
+                        player_radius
+                    )
+                ),
+                .move_direction = player_direction_vector,
+                .speed = PROJECTILE_MOVE_SPEED,
+                .color = RAYWHITE,
+                .active = true
+            };
+
+            bool added = AddProjectile(&projectile);
+
+            if (added)
+            {
+                SetSoundPitch(sfx_shoot, GetRandomValue(8, 12) / 10.0f);
+                PlaySound(sfx_shoot);
+            }
+
+        }
+        if (IsKeyPressed(KEY_ESCAPE))
+        {
+            Paused = !Paused;
+        }
     }
 
     if (IsKeyPressed(KEY_F4))
@@ -82,7 +140,7 @@ void input()
 
     Vector2 mouse_pos = GetMousePosition();
 
-    if (!Paused)
+    if (!Paused && !AtMenu)
     {
         Vector2 player_dif = Vector2Subtract(player_position, mouse_pos);
 
@@ -90,18 +148,6 @@ void input()
 
         player_rotation = angle;
     }
-
-    // if (fabsf(angle) < 5.0f)
-    //     angle = 0;
-    // else if (angle < -180.0f)
-    //     angle += 360;
-
-    // float normal_angle = angle - player_rotation;
-    
-    // player_target_rotation_offset = normal_angle;
-
-    // if (fabsf(normal_angle) > 160)
-    //     printf("%.2f\n", player_target_rotation_offset);
 }
 
 void step(float delta)
@@ -185,6 +231,9 @@ void step(float delta)
             DestroyAsteroid(asteroid);
             SetSoundPitch(sfx_explode, GetRandomValue(8, 12) / 10.0f);
             PlaySound(sfx_explode);
+
+            if (player_health <= 0)
+                StartMenu();
         }
     }
 }
@@ -276,8 +325,29 @@ void draw()
         DrawText(TextFormat("Player pos: %.0f, %.0f", player_position.x - WINDOW_WIDTH / 2, player_position.y - WINDOW_HEIGHT / 2), 20, 45, 20, LIME);
         DrawFPS(20, 20);
     }
+    
+    if (AtMenu)
+    {
 
-    //DrawText(TextFormat("Asteroid pos: %.0f, %.0f", SpawnedAsteroids[0].position.x, SpawnedAsteroids[0].position.y), 20, 50, 18, WHITE);
+        unsigned int length = MeasureText("ASTEROIDS", 54);
+        DrawText("ASTEROIDS", (WINDOW_WIDTH - length) / 2, 80, 54, WHITE);
+
+        if (GuiButton(
+            (Rectangle) {
+                .x = (WINDOW_WIDTH - START_BUTTON_WIDTH) / 2,
+                .y = (WINDOW_HEIGHT - (START_BUTTON_BOTTOM_PADDING + START_BUTTON_HEIGHT)),
+                .width = START_BUTTON_WIDTH,
+                .height = START_BUTTON_HEIGHT
+            },
+            "START"
+        ))
+        {
+            EndMenu();
+        }
+
+        EndDrawing();
+        return;
+    }
 
     // Draw bottom bar
 
@@ -375,6 +445,17 @@ int main()
 
     player_inner_radius = GetInnerRadius(3, player_radius);
 
+    GuiSetStyle(DEFAULT, BASE_COLOR_NORMAL, 0x00000000);
+    GuiSetStyle(DEFAULT, TEXT_COLOR_NORMAL, 0xFFFFFFFF);
+    GuiSetStyle(DEFAULT, BASE_COLOR_FOCUSED, 0xFFFFFF10);
+    GuiSetStyle(DEFAULT, TEXT_SIZE, 36);
+    GuiSetStyle(DEFAULT, TEXT_SPACING, 5);
+
+    StartMenu();
+
+    float timer_5s_elapsed = 5.0f;
+    float timer_1s_elapsed = 1.0f;
+
     while (!WindowShouldClose() && !ShouldExit) {
 
         float delta = 0;
@@ -388,8 +469,10 @@ int main()
         }
 
         asteroid_timer_elapsed += delta;
+        timer_5s_elapsed += delta;
+        timer_1s_elapsed += delta;
 
-        if (asteroid_timer_elapsed >= asteroid_timer_target)
+        if (asteroid_timer_elapsed >= asteroid_timer_target && !AtMenu)
         {
             asteroid_timer_elapsed = 0.0f;
             asteroid_timer_target = ((float) GetRandomValue(ASTEROID_DELAY_MIN * 10, ASTEROID_DELAY_MAX * 10)) / 10.0f;
@@ -460,6 +543,60 @@ int main()
             AddAsteroid(&asteroid);
 
             printf("New timer delay: %.2f\n", asteroid_timer_target);
+        }
+
+        if (timer_5s_elapsed >= 5.0f)
+        {
+            if (AtMenu)
+            {
+                int size = GetRandomValue(30, 80);
+
+                Asteroid asteroid = {
+                    .position = (Vector2) { .x = WINDOW_WIDTH + 100, .y = WINDOW_HEIGHT / 2 },
+                    .move_direction = (Vector2) { .x = -1, .y = 0 },
+                    .rotation_speed = 50.0f,
+                    .speed = 10000 / size,
+                    .size = size,
+                    .sides = SidesFromSize(size),
+                    .color = PINK,
+                    .active = true
+                };
+
+                SetInnerRadius(&asteroid);
+                AddAsteroid(&asteroid);
+            }
+
+            timer_5s_elapsed = 0.0f;
+        }
+
+        if (timer_1s_elapsed >= 1.0f)
+        {
+            if (AtMenu)
+            {
+                Projectile projectile = {
+                    .position = Vector2Add(
+                        player_position,
+                        Vector2Scale(
+                            player_direction_vector,
+                            player_radius
+                        )
+                    ),
+                    .move_direction = player_direction_vector,
+                    .speed = PROJECTILE_MOVE_SPEED,
+                    .color = RAYWHITE,
+                    .active = true
+                };
+
+                bool added = AddProjectile(&projectile);
+
+                if (added)
+                {
+                    SetSoundPitch(sfx_shoot, GetRandomValue(8, 12) / 10.0f);
+                    PlaySound(sfx_shoot);
+                }
+            }
+
+            timer_1s_elapsed = 0.0f;
         }
 
         draw();
