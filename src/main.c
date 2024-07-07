@@ -168,6 +168,9 @@ void input()
         {
             Paused = !Paused;
         }
+    } else if (IsKeyPressed(KEY_ENTER))
+    {
+        EndMenu();
     }
 
     if (IsKeyPressed(KEY_F4))
