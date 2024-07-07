@@ -22,6 +22,7 @@ bool AtMenu = true;
 float GlobalSoundVolume = 1.0f;
 float last_shot_time;
 int Score = 0;
+int HighScore = 0;
 Vector2 CameraOffset = (Vector2) { .x = 0, .y = 0 };
 
 Sound sfx_hit;
@@ -36,6 +37,30 @@ void SetGlobalVolume(float volume)
     SetSoundVolume(sfx_collide, volume);
     SetSoundVolume(sfx_explode, volume);
     SetSoundVolume(sfx_shoot, volume);
+}
+
+int GetHighScore()
+{
+    FILE* scores = fopen("highscore.txt", "r");
+
+    if (scores == NULL)
+        return 0;
+
+    int score = -1;
+    fscanf(scores, "%d", &score);
+
+    fclose(scores);
+
+    return score;
+}
+
+void SetHighScore(int score)
+{
+    FILE* scores = fopen("highscore.txt", "w");
+
+    fprintf(scores, "%d", score);
+
+    fclose(scores);
 }
 
 void StartMenu()
@@ -60,6 +85,12 @@ void StartMenu()
     player_rotation_queue = 0;
     player_forward_queue = 0;
     player_sideways_queue = 0;
+
+    if (Score > HighScore)
+    {
+        SetHighScore(Score);
+        HighScore = Score;
+    }
 
     AtMenu = true;
 }
@@ -369,8 +400,16 @@ void draw()
     if (AtMenu)
     {
 
-        unsigned int length = MeasureText("ASTEROIDS", 54);
-        DrawText("ASTEROIDS", (WINDOW_WIDTH - length) / 2, 80, 54, WHITE);
+        {
+            unsigned int length = MeasureText("ASTEROIDS", 54);
+            DrawText("ASTEROIDS", (WINDOW_WIDTH - length) / 2, 80, 54, WHITE);
+        }
+
+        {
+            const char* text = TextFormat("Highscore: %d", HighScore);
+            unsigned int length = MeasureText(text, 18);
+            DrawText(text, (WINDOW_WIDTH - length) / 2, 140, 18, GRAY);
+        }
 
         DrawSettings();
 
@@ -493,6 +532,8 @@ int main()
     GuiSetStyle(DEFAULT, BASE_COLOR_FOCUSED, 0xFFFFFF10);
     GuiSetStyle(DEFAULT, TEXT_SIZE, 36);
     GuiSetStyle(DEFAULT, TEXT_SPACING, 5);
+
+    HighScore = GetHighScore();
 
     StartMenu();
 
